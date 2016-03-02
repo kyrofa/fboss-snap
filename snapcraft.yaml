@@ -3,7 +3,7 @@ version: 0.1.0
 vendor: Kyle Fazzari <kyle@canonical.com>
 summary: Facebook Open Switching System
 description: Facebook's software stack for controlling and managing network switches
-icon: icon.svg
+icon: icon.png
 
 services:
   wedge-agent:
