@@ -44,9 +44,45 @@ class XFbossPlugin(snapcraft.BasePlugin):
     def __init__(self, name, options):
         super().__init__(name, options)
 
-        self.build_packages.extend(['git', 'cmake', 'make'])
+        # Most build tools are fetched by getdeps.sh, but we need to fetch the
+        # source before we do anything, so we need git.
+        self.build_packages.extend(['git'])
+
+        # Run-time dependencies for folly
+        self.stage_packages.extend(
+            ['libboost-atomic1.54.0', 'libboost-chrono1.54.0',
+             'libboost-context1.54.0', 'libboost-date-time1.54.0',
+             'libboost-filesystem1.54.0', 'libboost-iostreams1.54.0',
+             'libboost-program-options1.54.0', 'libboost-python1.54.0',
+             'libboost-regex1.54.0', 'libboost-serialization1.54.0',
+             'libboost-system1.54.0', 'libboost-thread1.54.0', 'libevent-2.0-5',
+             'libevent-core-2.0-5', 'libevent-extra-2.0-5',
+             'libevent-pthreads-2.0-5', 'libevent-openssl-2.0-5',
+             'libdouble-conversion1', 'libgoogle-glog0', 'libgflags2',
+             'liblz4-1', 'liblzma5', 'libsnappy1', 'zlib1g', 'binutils',
+             'libjemalloc1', 'libssl1.0.0'])
+
+        # Run-time dependencies for fbthrift
+        self.stage_packages.extend(
+            ['libkrb5-3', 'libk5crypto3', 'libgssapi-krb5-2', 'libgssrpc4',
+             'libkadm5srv-mit9', 'libkadm5clnt-mit9', 'libcomerr2',
+             'libasn1-8-heimdal', 'libgssapi3-heimdal', 'libhcrypto4-heimdal',
+             'libhdb9-heimdal', 'libheimbase1-heimdal', 'libhx509-5-heimdal',
+             'libkadm5clnt7-heimdal', 'libkadm5srv8-heimdal',
+             'libkafs0-heimdal', 'libkdc2-heimdal', 'libkrb5-26-heimdal',
+             'libwind0-heimdal', 'libotp0-heimdal', 'libsl0-heimdal',
+             'libroken18-heimdal', 'heimdal-clients', 'libsasl2-2',
+             'libnuma1', 'libssl1.0.0', 'zlib1g'])
+
+        # Run-time dependencies for iproute
+        self.stage_packages.append('libdb5.3')
+
+        # Run-time dependencies for fboss
+        self.stage_packages.extend(['libpcap0.8', 'libusb-1.0-0'])
 
     def pull(self):
+        logger.info('Obtaining FBOSS source...')
+
         self.run(['git', 'clone', 'https://github.com/facebook/fboss.git',
                   self.sourcedir])
         self.run(['git checkout ea2f4bd3f1e91992b8ee1d84540ece948f843a68'],
@@ -63,6 +99,8 @@ class XFbossPlugin(snapcraft.BasePlugin):
             re.compile(r'update.*https://github.com/facebook/fbthrift.git'),
             'update https://github.com/facebook/fbthrift.git '
             '1b2b03a472c41915a8c481a06edc630674377e77')
+
+        logger.info('Obtaining (and building) FBOSS dependencies...')
 
         # This builds the dependencies right after pulling them. Not ideal for
         # the pull step, but it needs to be in the source directory so it makes
@@ -82,5 +120,32 @@ class XFbossPlugin(snapcraft.BasePlugin):
         self._install()
 
     def _install(self):
-        # TBD
-        pass
+        # First, install the binary
+        bindir = os.path.join(self.installdir, 'bin')
+        if not os.path.exists(bindir):
+            os.mkdir(bindir)
+
+        shutil.copy(os.path.join(self.builddir, 'wedge_agent'), bindir)
+
+        # Now install the external libraries
+        libdir = os.path.join(self.installdir, 'lib')
+        if not os.path.exists(libdir):
+            os.mkdir(libdir)
+
+        external_dir = os.path.join(self.sourcedir, 'external')
+
+        libraries = [
+            os.path.join(external_dir, 'folly', 'folly', '.libs',
+                         'libfolly.so.57'),
+            os.path.join(external_dir, 'fbthrift', 'thrift', 'lib', 'cpp',
+                         '.libs', 'libthrift.so.32'),
+            os.path.join(external_dir, 'fbthrift', 'thrift', 'lib', 'cpp2',
+                         '.libs', 'libthriftcpp2.so.32'),
+            os.path.join(external_dir, 'fbthrift', 'thrift', 'lib', 'cpp2',
+                         '.libs', 'libthriftprotocol.so'),
+            os.path.join(external_dir, 'OpenNSL', 'bin', 'wedge-trident',
+                         'libopennsl.so.1')
+        ]
+
+        for library in libraries:
+            shutil.copy(library, libdir)

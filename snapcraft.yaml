@@ -5,6 +5,24 @@ summary: Facebook Open Switching System
 description: Facebook's software stack for controlling and managing network switches
 icon: icon.svg
 
+services:
+  wedge-agent:
+    description: wedge agent
+    start: start_wedge_agent
+    caps:
+      - network-client
+      - network-admin
+
 parts:
   fboss:
     plugin: x-fboss
+
+  fboss-launcher:
+    plugin: copy
+    files:
+      src/start_wedge_agent: bin/start_wedge_agent
+
+  fboss-config:
+    plugin: copy
+    files:
+      config/ocp-demo.json: config/ocp-demo.json
