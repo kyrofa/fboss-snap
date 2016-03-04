@@ -78,7 +78,8 @@ class XFbossPlugin(snapcraft.BasePlugin):
         self.stage_packages.append('libdb5.3')
 
         # Run-time dependencies for fboss
-        self.stage_packages.extend(['libpcap0.8', 'libusb-1.0-0'])
+        self.stage_packages.extend(['libpcap0.8', 'libusb-1.0-0',
+                                    'python-ipaddr', 'python-six'])
 
     def pull(self):
         logger.info('Obtaining FBOSS source...')
@@ -125,9 +126,35 @@ class XFbossPlugin(snapcraft.BasePlugin):
         if not os.path.exists(bindir):
             os.mkdir(bindir)
 
-        shutil.copy(os.path.join(self.builddir, 'wedge_agent'), bindir)
+        binaries = [
+            os.path.join(self.builddir, 'wedge_agent'),
+            os.path.join(self.sourcedir, 'fboss', 'agent', 'tools',
+                         'fboss_route.py')
+        ]
 
-        # Now install the external libraries
+        for binary in binaries:
+            shutil.copy(binary, bindir)
+
+        # Now install the python modules needed by fboss_route.py
+        modulesdir = self.dist_packages_dir()
+        if not os.path.exists(modulesdir):
+            os.mkdir(modulesdir)
+
+        modules = [
+            (os.path.join(self.builddir, 'gen', 'fboss', 'agent', 'if',
+                         'gen-py', 'neteng'), 'neteng'),
+            (os.path.join(self.builddir, 'gen', 'common', 'fb303', 'if',
+                          'gen-py', 'fb303'), 'fb303'),
+            (os.path.join(self.builddir, 'gen', 'common', 'network', 'if',
+                          'gen-py', 'facebook'), 'facebook'),
+            (os.path.join(self.sourcedir, 'external', 'fbthrift', 'thrift',
+                         'lib', 'py'), 'thrift')
+        ]
+
+        for module in modules:
+            shutil.copytree(module[0], os.path.join(modulesdir, module[1]))
+
+        # Finally, install the external libraries
         libdir = os.path.join(self.installdir, 'lib')
         if not os.path.exists(libdir):
             os.mkdir(libdir)
@@ -149,3 +176,10 @@ class XFbossPlugin(snapcraft.BasePlugin):
 
         for library in libraries:
             shutil.copy(library, libdir)
+
+    def dist_packages_dir(self):
+        return os.path.join(self.installdir, 'usr', 'lib',
+                            self.python_version(), 'dist-packages')
+
+    def python_version(self):
+        return self.run_output(['pyversions', '-d'])

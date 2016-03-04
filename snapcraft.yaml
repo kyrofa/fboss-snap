@@ -12,8 +12,8 @@ services:
     security-template: unconfined
 
 binaries:
-  wedge-agent-binary:
-    exec: start_wedge_agent
+  fboss-route:
+    exec: fboss_route.py
     security-template: unconfined
 
 parts:
