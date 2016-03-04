@@ -6,4 +6,4 @@ wedge_agent \
     -fruid_filepath=$TMPDIR/fruid.json \
     -mgmt_if=eth0 \
     -can_warm_boot=false \
-    -config=SNAP_APP_PATH/config/ocp-demo.json
+    -config=$SNAP_APP_PATH/config/ocp-demo.json

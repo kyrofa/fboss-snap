@@ -9,9 +9,12 @@ services:
   wedge-agent:
     description: wedge agent
     start: start_wedge_agent
-    caps:
-      - network-client
-      - network-admin
+    security-template: unconfined
+
+binaries:
+  wedge-agent-binary:
+    exec: start_wedge_agent
+    security-template: unconfined
 
 parts:
   fboss:
